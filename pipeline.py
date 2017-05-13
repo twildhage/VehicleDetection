@@ -2,6 +2,8 @@ import matplotlib.image as mpimg
 import numpy as np
 import cv2
 from skimage.feature import hog
+from sklearn.preprocessing import StandardScaler
+
 import os
 from glob import glob
 
@@ -68,15 +70,15 @@ def color_hist(image, nbins=32, bins_range=(0, 256)):
 
 # Define a function to extract features from a list of images
 # Have this function call bin_spatial() and color_hist()
-def extract_features(imgs, color_space='RGB', spatial_size=(32, 32),
+def extract_features(image_files, color_space='RGB', spatial_size=(32, 32),
                         hist_bins=32, orient=9, 
                         pix_per_cell=8, cell_per_block=2, hog_channel=0,
                         spatial_feat=True, hist_feat=True, hog_feat=True):
     # Create a list to append feature vectors to
-    features = []
+    features = {'spatial': [], 'hist': [], 'hog': []}
     # Iterate through the list of images
-    for file in imgs:
-        file_features = []
+    for file in image_files:
+        image_features    = []
         # Read in each one by one
         image = mpimg.imread(file)
         # apply color conversion if other than 'RGB'
@@ -94,30 +96,37 @@ def extract_features(imgs, color_space='RGB', spatial_size=(32, 32),
         else: feature_image = np.copy(image)      
 
         if spatial_feat == True:
-            spatial_features = bin_spatial(feature_image, size=spatial_size)
-            file_features.append(spatial_features)
+            spatial_feature = bin_spatial(feature_image, size=spatial_size)
+            features['spatial'].append(spatial_feature)
         if hist_feat == True:
             # Apply color_hist()
-            hist_features = color_hist(feature_image, nbins=hist_bins)
-            file_features.append(hist_features)
+            hist_feature = color_hist(feature_image, nbins=hist_bins)
+            features['hist'].append(hist_feature)
         if hog_feat == True:
         # Call get_hog_features() with vis=False, feature_vec=True
             if hog_channel == 'ALL':
-                hog_features = []
+                hog_feature = []
                 for channel in range(feature_image.shape[2]):
-                    hog_features.append(get_hog_features(feature_image[:,:,channel], 
+                    hog_feature.append(get_hog_features(feature_image[:,:,channel], 
                                         orient, pix_per_cell, cell_per_block, 
                                         vis=False, feature_vec=True))
-                hog_features = np.ravel(hog_features)        
+                features['hog'].append(np.ravel(hog_feature))        
             else:
-                hog_features = get_hog_features(feature_image[:,:,hog_channel], orient, 
-                            pix_per_cell, cell_per_block, vis=False, feature_vec=True)
+                features['hog'].append(get_hog_features(feature_image[:,:,hog_channel], orient, 
+                            pix_per_cell, cell_per_block, vis=False, feature_vec=True))
             # Append the new feature vector to the features list
-            file_features.append(hog_features)
-        features.append(np.concatenate(file_features))
+    f = []
+    for key in features:
+        X = np.vstack(features[key]).astype(np.float64)                        
+        # Fit a per-column scaler
+        X_scaler = StandardScaler().fit(X)
+        # Apply the scaler to X
+        scaled_X = X_scaler.transform(X)
+        f.append(scaled_X)
+        print(scaled_X.shape)
+    result =  np.concatenate(f, axis=1)
     # Return list of feature vectors
-    return features
-    
+    return result    
 # Define a function that takes an image,
 # start and stop positions in both x and y, 
 # window size (x and y dimensions),  
