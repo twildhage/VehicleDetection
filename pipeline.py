@@ -27,40 +27,50 @@ def get_image_files(path):
             if not subfolder.startswith('.'):
                 files =  glob(abs_path)
                 [image_files[folder].append(file) for file in files]
-    return image_files
-
-
-def get_shuffle_split_train_test_datasets(features, nb_samples=10, test_size=0.2):
-    X = {'train': [], 'test': []}
-    y = {'train': [], 'test': []}
-
-    X_stack = np.vstack([features['vehicles'][0:nb_samples], features['non-vehicles'][0:nb_samples]])
-    y_stack = np.vstack([np.ones((nb_samples, 1)), np.zeros((nb_samples, 1))])
-
-    X['train'], X['test'], y['train'], y['test'] = train_test_split(X_stack, y_stack,
-                                                                    test_size=test_size, random_state=42)
-
-    return X, y
-
-
-def get_shuffle_split_train_test_images(image_files, nb_samples=10, test_size=0.2):
-    files = {'train': [], 'test': []}
-    images = {'train': [], 'test': []}
-
-    image_files_stack = np.vstack([image_files['vehicles'][0:nb_samples],
-                                   image_files['non-vehicles'][0:nb_samples]])
-    indices           = np.arange(0, len(image_files_stack))
-
+                
+    dataset = {'files': [], 'labels': []}
+    for key in image_files:
+        print(key)
+        for file in image_files[key]:
+            dataset['files'].append(file)
+            if key == 'vehicles':
+                dataset['labels'].append(1)
+            elif key == 'non-vehicles':
+                dataset['labels'].append(0)
+                
+    np.random.seed(42)
+    np.random.shuffle(dataset['files'])
+    np.random.seed(42)
+    np.random.shuffle(dataset['labels'])            
     
-    files['train'], files['test'], _, _ = train_test_split(image_files_stack, indices,
-                                                                    test_size=test_size, random_state=42)
-    
-    for key in files:
-        for file in files[key][0]:
-            images[key].append(mpimg.imread(file))
-    
-    return images, files
+    return dataset
 
+def split_train_test_dataset(data, test_size=0.2):
+    data_part = {'train': [], 'test': []}
+    
+    L = len(data)
+    idx_split = (int)(L * (1-test_size))
+    
+    data_part['train'] = data[0:idx_split]
+    data_part['test']  = data[idx_split::]
+
+    return data_part
+
+
+def extract_and_split(dataset, kw_extract, kw_split, nb_samples=100):
+    
+    features = extract_features(dataset['files'][0:nb_samples], **kw_extract)
+    labels   = np.array(dataset['labels'][0:nb_samples])
+    files    = dataset['files'][0:nb_samples]
+
+    print("\nFeatures: \t{0}\nLabels: \t{1}\nFiles: \t\t{2}\n".format(features.shape, labels.shape, len(files)))
+
+    X = split_train_test_dataset(features, **kw_split)
+    y = split_train_test_dataset(labels, **kw_split)
+    f = split_train_test_dataset(files, **kw_split)
+
+    print("Number of samples \ntraining:\t{0} \ntest:\t\t{1}".format(X['train'].shape[0], X['test'].shape[0]))
+    return X, y, f
             
 
 # Define a function to return HOG features and visualization
@@ -158,7 +168,6 @@ def extract_features(image_files, color_space='RGB', spatial_size=(32, 32),
             # Apply the scaler to X
             scaled_X = X_scaler.transform(X)
             f.append(scaled_X)
-            print(scaled_X.shape)
     result =  np.concatenate(f, axis=1)
     # Return list of feature vectors
     return result    
