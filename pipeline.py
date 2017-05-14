@@ -59,7 +59,7 @@ def split_train_test_dataset(data, test_size=0.2):
 
 def extract_and_split(dataset, kw_extract, kw_split, nb_samples=100):
     
-    features = extract_features(dataset['files'][0:nb_samples], **kw_extract)
+    features = extract_features_from_files(dataset['files'][0:nb_samples], **kw_extract)
     labels   = np.array(dataset['labels'][0:nb_samples])
     files    = dataset['files'][0:nb_samples]
 
@@ -114,10 +114,12 @@ def color_hist(image, nbins=32, bins_range=(0, 256)):
 
 # Define a function to extract features from a list of images
 # Have this function call bin_spatial() and color_hist()
-def extract_features(image_files, color_space='RGB', spatial_size=(32, 32),
-                        hist_bins=32, orient=9, 
-                        pix_per_cell=8, cell_per_block=2, hog_channel=0,
-                        spatial_feat=True, hist_feat=True, hog_feat=True):
+def extract_features_from_files(image_files, kw_spatial, kw_hist, kw_hog,
+                               color_space='RGB',
+                               hog_channel=0,
+                               spatial_feat=True,
+                               hist_feat=True,
+                               hog_feat=True):
     # Create a list to append feature vectors to
     features = {'spatial': [], 'hist': [], 'hog': []}
     # Iterate through the list of images
@@ -140,24 +142,23 @@ def extract_features(image_files, color_space='RGB', spatial_size=(32, 32),
         else: feature_image = np.copy(image)      
 
         if spatial_feat == True:
-            spatial_feature = bin_spatial(feature_image, size=spatial_size)
+            spatial_feature = bin_spatial(feature_image, **kw_spatial)
             features['spatial'].append(spatial_feature)
         if hist_feat == True:
             # Apply color_hist()
-            hist_feature = color_hist(feature_image, nbins=hist_bins)
+            hist_feature = color_hist(feature_image, **kw_hist)
             features['hist'].append(hist_feature)
         if hog_feat == True:
         # Call get_hog_features() with vis=False, feature_vec=True
             if hog_channel == 'ALL':
                 hog_feature = []
                 for channel in range(feature_image.shape[2]):
-                    hog_feature.append(get_hog_features(feature_image[:,:,channel], 
-                                        orient, pix_per_cell, cell_per_block, 
-                                        vis=False, feature_vec=True))
+                    hog_feature.append(get_hog_features(feature_image[:,:,channel],
+                                                        **kw_hog, vis=False, feature_vec=True))
                 features['hog'].append(np.ravel(hog_feature))        
             else:
-                features['hog'].append(get_hog_features(feature_image[:,:,hog_channel], orient, 
-                            pix_per_cell, cell_per_block, vis=False, feature_vec=True))
+                features['hog'].append(get_hog_features(feature_image[:,:,hog_channel],
+                                                        **kw_hog, vis=False, feature_vec=True))
             # Append the new feature vector to the features list
     f = []
     for key in features:
@@ -170,7 +171,8 @@ def extract_features(image_files, color_space='RGB', spatial_size=(32, 32),
             f.append(scaled_X)
     result =  np.concatenate(f, axis=1)
     # Return list of feature vectors
-    return result    
+    return result
+
 # Define a function that takes an image,
 # start and stop positions in both x and y, 
 # window size (x and y dimensions),  
