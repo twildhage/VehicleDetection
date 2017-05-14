@@ -3,6 +3,7 @@ import numpy as np
 import cv2
 from skimage.feature import hog
 from sklearn.preprocessing import StandardScaler
+from sklearn.model_selection import train_test_split
 
 import os
 from glob import glob
@@ -28,6 +29,39 @@ def get_image_files(path):
                 [image_files[folder].append(file) for file in files]
     return image_files
 
+
+def get_shuffle_split_train_test_datasets(features, nb_samples=10, test_size=0.2):
+    X = {'train': [], 'test': []}
+    y = {'train': [], 'test': []}
+
+    X_stack = np.vstack([features['vehicles'][0:nb_samples], features['non-vehicles'][0:nb_samples]])
+    y_stack = np.vstack([np.ones((nb_samples, 1)), np.zeros((nb_samples, 1))])
+
+    X['train'], X['test'], y['train'], y['test'] = train_test_split(X_stack, y_stack,
+                                                                    test_size=test_size, random_state=42)
+
+    return X, y
+
+
+def get_shuffle_split_train_test_images(image_files, nb_samples=10, test_size=0.2):
+    files = {'train': [], 'test': []}
+    images = {'train': [], 'test': []}
+
+    image_files_stack = np.vstack([image_files['vehicles'][0:nb_samples],
+                                   image_files['non-vehicles'][0:nb_samples]])
+    indices           = np.arange(0, len(image_files_stack))
+
+    
+    files['train'], files['test'], _, _ = train_test_split(image_files_stack, indices,
+                                                                    test_size=test_size, random_state=42)
+    
+    for key in files:
+        for file in files[key][0]:
+            images[key].append(mpimg.imread(file))
+    
+    return images, files
+
+            
 
 # Define a function to return HOG features and visualization
 def get_hog_features(image, orient, pix_per_cell, cell_per_block, 
@@ -117,13 +151,14 @@ def extract_features(image_files, color_space='RGB', spatial_size=(32, 32),
             # Append the new feature vector to the features list
     f = []
     for key in features:
-        X = np.vstack(features[key]).astype(np.float64)                        
-        # Fit a per-column scaler
-        X_scaler = StandardScaler().fit(X)
-        # Apply the scaler to X
-        scaled_X = X_scaler.transform(X)
-        f.append(scaled_X)
-        print(scaled_X.shape)
+        if features[key]:
+            X = np.vstack(features[key]).astype(np.float64)                        
+            # Fit a per-column scaler
+            X_scaler = StandardScaler().fit(X)
+            # Apply the scaler to X
+            scaled_X = X_scaler.transform(X)
+            f.append(scaled_X)
+            print(scaled_X.shape)
     result =  np.concatenate(f, axis=1)
     # Return list of feature vectors
     return result    
