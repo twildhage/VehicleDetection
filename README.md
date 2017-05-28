@@ -128,7 +128,7 @@ The following pseudo code describes how the classes and the two search types wor
     repeat Run until end of video stream
 
 ## Results
-The resulting video can be found [here](./project_video,mp4) and on [Youtube](https://youtu.be/yZJy-53lmVo).
+The resulting video can be found [here](./vehicle_detection_video,mp4) and on [Youtube](https://youtu.be/yZJy-53lmVo).
 
 The classification model and the pipeline were able to detect all cars in the video.
 However, here is a list of some shortcomings:
